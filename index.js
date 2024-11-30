@@ -6,9 +6,11 @@ const app = express();
 const port = 3000;
 
 app.use(cors());
+app.use(express.json());
+
 // Connect to MongoDB
 mongoose
-    .connect("mongodb://localhost:27017/gym")
+    .connect("mongodb://localhost:27017/query")
     .then(() => {
         console.log("Connected to MongoDB");
     })
@@ -27,7 +29,13 @@ const coachSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now },
 });
 
+const DishSchema = new mongoose.Schema({
+    dishname: { type: String, required: true },
+    sizes: { type: Array, default: [] },
+});
+
 const Coach = mongoose.model("Coach", coachSchema);
+const Dish = mongoose.model("Dish", DishSchema);
 
 app.use(express.json());
 
@@ -123,6 +131,28 @@ app.delete("/coach", async (req, res) => {
         });
     } catch (err) {
         res.status(404).send("Coach not found");
+    }
+});
+
+app.get("/api/search", async (req, res) => {
+    const { query } = req.query;
+
+    if (!query) {
+        return res
+            .status(400)
+            .json({ message: "Query parameter is required." });
+    }
+
+    try {
+        const results = await Dish.find({
+            dishname: { $regex: query, $options: "i" },
+        }).limit(10);
+
+        res.json(results);
+    } catch (err) {
+        res.status(500).json({
+            error: "An error occurred while searching the database.",
+        });
     }
 });
 
